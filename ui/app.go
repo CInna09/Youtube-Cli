@@ -19,6 +19,8 @@ const (
 	statePlayer                  // video is playing
 )
 
+const searchResultLimit = 12
+
 // Messages
 type (
 	searchDoneMsg struct {
@@ -153,16 +155,7 @@ func (a *App) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if a.search.Focused() {
 		switch {
 		case msg.Type == tea.KeyF1:
-			if a.playerSvc.Volume() > 0 {
-				a.mutedVolume = a.volume
-				a.playerSvc.SetVolume(0)
-			} else {
-				vol := a.mutedVolume
-				if vol == 0 {
-					vol = 30
-				}
-				a.playerSvc.SetVolume(vol)
-			}
+			a.toggleMute()
 			return a, nil
 		case msg.Type == tea.KeyF2:
 			a.volume = max(a.volume-5, 0)
@@ -202,7 +195,7 @@ func (a *App) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				a.fetching = true
 				a.err = nil
 				return a, func() tea.Msg {
-					results, err := a.searchSvc.Search(q, 12)
+					results, err := a.searchSvc.Search(q, searchResultLimit)
 					return searchDoneMsg{results: results, err: err}
 				}
 			}
@@ -234,13 +227,13 @@ func (a *App) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return a, nil
 
 	case key.Matches(msg, DefaultKeyMap.Select):
-		return a.playSelected("bestaudio")
+		return a.playSelected()
 
 	case key.Matches(msg, DefaultKeyMap.PlayPause):
 		if a.state == statePlayer && a.track != nil {
 			a.playerSvc.Pause()
 		} else if len(a.results) > 0 {
-			return a.playSelected("bestaudio")
+			return a.playSelected()
 		}
 		return a, nil
 
@@ -270,23 +263,28 @@ func (a *App) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		a.playerSvc.SetVolume(a.volume)
 		return a, nil
 	case key.Matches(msg, DefaultKeyMap.Mute):
-		if a.playerSvc.Volume() > 0 {
-			a.mutedVolume = a.volume
-			a.playerSvc.SetVolume(0)
-		} else {
-			vol := a.mutedVolume
-			if vol == 0 {
-				vol = 30
-			}
-			a.playerSvc.SetVolume(vol)
-		}
+		a.toggleMute()
 		return a, nil
 	}
 
 	return a, nil
 }
 
-func (a *App) playSelected(format string) (tea.Model, tea.Cmd) {
+// toggleMute switches between muted and previous volume.
+func (a *App) toggleMute() {
+	if a.playerSvc.Volume() > 0 {
+		a.mutedVolume = a.volume
+		a.playerSvc.SetVolume(0)
+	} else {
+		vol := a.mutedVolume
+		if vol == 0 {
+			vol = 30
+		}
+		a.playerSvc.SetVolume(vol)
+	}
+}
+
+func (a *App) playSelected() (tea.Model, tea.Cmd) {
 	if a.cursor < 0 || a.cursor >= len(a.results) {
 		return a, nil
 	}

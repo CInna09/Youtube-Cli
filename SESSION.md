@@ -331,6 +331,186 @@ cava is a mature, optimized C implementation using PulseAudio/PipeWire APIs for 
 
 ---
 
+---
+
+## Bug Log & Fix History (Chronological)
+
+### Bug #1 — CPU 100% 🔥
+- **Problem**: `pollPlayerTick()` menggunakan `func() tea.Msg { return playerTickMsg{} }` yang langsung memanggil dirinya sendiri tanpa delay → infinite loop secepat mungkin.
+- **Root Cause**: Tidak pakai `tea.Tick()`, jadi command langsung fire lagi begitu selesai.
+- **Fix**: Ganti ke `tea.Tick(100*time.Millisecond, ...)` — tick hanya jalan 10 kali/detik.
+- **File**: `ui/app.go` — `pollPlayerTick()`
+
+### Bug #2 — Data Race di playSelected 💥
+- **Problem**: `go func() { a.err = err }()` nulis ke `a.err` dari goroutine berbeda, race dengan event loop.
+- **Root Cause**: Goroutine mentah tanpa command bubbletea.
+- **Fix**: Ganti ke `tea.Batch(playCmd, pollPlayerTick)` — play jadi `tea.Cmd` yang ngirim `playDoneMsg`, dihandle di `Update()`.
+- **File**: `ui/app.go` — `playSelected()`, `playDoneMsg`
+
+### Bug #3 — Volume Hardcoded 60, Gak Bisa Diubah 🔇
+- **Problem**: `Play()` selalu `Volume: 60`, ignore setting user. Setiap ganti lagu, volume balik ke 60.
+- **Root Cause**: `Track.Volume` di-set hardcoded di `Play()`.
+- **Fix**: Simpan `volume int` di `PlayerService`, `Play()` pake `s.volume`, `SetVolume()` update `s.volume` + `s.config.DefaultVolume` + `config.Save()`.
+- **File**: `service/player.go`
+
+### Bug #4 — Mute Gak Pernah Unmute 🔄
+- **Problem**: Mute check `a.volume > 0`. Tapi mute cuma set mpv ke 0, `a.volume` tetap positif. Jadi mute kedua kali dianggap "mute lagi" bukan "unmute".
+- **Root Cause**: Pake `a.volume` (state lokal) instead of `playerSvc.Volume()` (state mpv).
+- **Fix**: Pake `a.playerSvc.Volume() > 0` buat deteksi mute state. Tambah `mutedVolume int` di App buat restore.
+- **File**: `ui/app.go` — Mute handler, `mutedVolume` field
+
+### Bug #5 — Volume Display "Mockup" — Bedanya App vs Browser 🔊
+- **Problem**: Volume 30% di app lebih kecil dari 30% di browser. User harus naikin ke 50-60% buat dapet volume sama.
+- **Root Cause (mpv)**: mpv punya `replaygain` yang ngurangin volume secara otomatis. Juga mpv punya volume scaling sendiri yang beda dari system/browser.
+- **Fix**: Tambah flag mpv:
+  - `--replaygain=no` — **paling penting**, matiin normalisasi gain
+  - `--volume-max=100` — batasin max volume biar gak overclock
+  - `--volume=100` — start di 100 (langsung di-override config)
+  - `--af=scaletempo` — audio filter tempo scaling
+  - `--no-audio-display` — matiin cover art
+- **File**: `infra/mpv.go` — `Start()` flags
+
+### Bug #6 — Volume Display Masih 30 Padahal Udah Dinaikin 📊
+- **Problem**: `a.volume` di-set dari `t.Volume` (track state), tapi `track.Volume` bisa basi karena cuma di-set pas `Play()` dan `SetVolume()`.
+- **Root Cause**: Volume di-cache di 3 tempat (App.volume, PlayerService.volume, Track.Volume) dan gak selalu sync.
+- **Fix**: 
+  1. `PlayerService.poll()` tiap 500ms baca `mpv.GetVolume()` dan update `s.volume` + `track.Volume` — **ambil dari mesin langsung**
+  2. Tick handler set `a.volume = a.playerSvc.Volume()` (dari PlayerService cache) bukan `a.volume = t.Volume`
+- **File**: `service/player.go` — `poll()`, `ui/app.go` — `playerTickMsg`
+
+### Bug #7 — sendCommand Panic Kalo mpv Gagal Start 💥
+- **Problem**: `NewPlayerService` panggil `mpv.SetVolume()` tanpa check mpv running → nil.conn.Write → panic.
+- **Root Cause**: `sendCommand()` akses `m.conn` tanpa null check.
+- **Fix**: Tambah `if m.conn == nil { return nil, fmt.Errorf("mpv not connected") }` di `sendCommand()`.
+- **File**: `infra/mpv.go` — `sendCommand()`
+
+### Bug #8 — Keyboard Rusak: Space, J, K Gak Bisa Ngetik ⌨️
+- **Problem**: Space di-search bikin play/pause. "J" dan "K" di-search gerakin cursor. "P", "S", "V" juga kena.
+- **Root Cause**: Global action keys dicegah SEBELUM search focus check. Space kena PlayPause, J/K kena CursorUp/Down.
+- **Fix Strategy (2 langkah)**:
+  1. **Global keys dibatasi ke F-keys & arrows doang** — character keys (Space, p, s, v, +, =, /) cuma kerja kalo search gak fokus.
+  2. **Semua A-Z dihapus dari key bindings** — user bilang "alphabet cuma buat nyari". `q`, `k`, `j`, `v`, `p`, `s` di-remove.
+- **Final key policy**:
+  - Search FOKUS: F1-F4 = volume/stop, arrows = navigasi, Enter = search, **sisanya = ngetik**
+  - Search UNFOKUS: semua key = action (volume, seek, play/pause, stop, dll)
+- **File**: `ui/app.go` — `handleKey()`, `ui/keys.go` — `DefaultKeyMap`, `ui/layout.go` — sidebar help
+
+### Bug #9 — Volume Bar Width 8: 30%→35% Invisible 📏
+- **Problem**: `volumeBar(vol, 8)` — 30% dan 35% sama-sama `[##------]`.
+- **Root Cause**: Integer division: `30*8/100 = 2`, `35*8/100 = 2`.
+- **Fix**: Ganti width ke 12, tambah display angka `"35%"` di samping bar. Tapi akhirnya **volume bar di-sidebar dihapus total** karena user nilai gak berguna — volume cuma ditampilkan di status bar (Title | time | Vol: 35%).
+- **File**: `ui/layout.go` — `renderSidebarContent()`
+
+---
+
+## Current Keyboard Map (Final)
+
+### Search FOKUS (lagi ngetik)
+| Key | Action |
+|-----|--------|
+| `F1` | Mute/Unmute |
+| `F2` | Volume -5 |
+| `F3` | Volume +5 |
+| `F4` | Stop |
+| `←` | Seek -5s (kalo ada player) |
+| `→` | Seek +5s (kalo ada player) |
+| `↑` | Cursor up (results) |
+| `↓` | Cursor down (results) |
+| `Enter` | Search |
+| `A-Z`, `0-9`, symbols | **Ngetik ke search box** ✏️ |
+| `Ctrl+C` | Quit |
+
+### Search UNFOKUS (lagi kontrol)
+| Key | Action |
+|-----|--------|
+| `F1` | Mute/Unmute |
+| `F2` | Volume -5 |
+| `F3` / `+` / `=` | Volume +5 |
+| `F4` / `s` | Stop |
+| `←` | Seek -5s |
+| `→` | Seek +5s |
+| `↑` | Cursor up |
+| `↓` | Cursor down |
+| `Enter` | Play audio |
+| `Space` | Play/Pause |
+| `/` | Focus search |
+| `Ctrl+C` | Quit |
+
+---
+
+## Volume Architecture (Final)
+
+```
+┌─ config.toml ──────────────────────┐
+│  default_volume = 35               │ ← disimpan tiap SetVolume()
+└────────────────────────────────────┘
+         ↓ startup
+┌─ PlayerService ────────────────────┐
+│  NewPlayerService(..., config)     │
+│    → s.volume = config.Default     │
+│    → mpv.SetVolume(s.volume)       │
+│                                    │
+│  SetVolume(35)                     │
+│    → s.volume = 35                 │ ← cache
+│    → config.DefaultVolume = 35     │ ← persist
+│    → config.Save()                 │
+│    → mpv.SetVolume(35)             │ ← langsung ke mpv
+│                                    │
+│  poll() tiap 500ms:                 │
+│    → mpv.GetVolume() → 35          │ ← verifikasi dari mpv!
+│    → s.volume = 35                 │ ← re-sync
+│    → track.Volume = 35             │ ← re-sync
+│                                    │
+│  Volume() int:                      │
+│    return s.volume (cached)         │ ← non-blocking
+└────────────────────────────────────┘
+         ↓
+┌─ App (UI) ─────────────────────────┐
+│  tick tiap 100ms:                   │
+│    a.volume = playerSvc.Volume()    │ ← selalu dari cache mpv
+│                                    │
+│  F3 ditekan:                       │
+│    a.volume = min(a.volume+5, 100) │
+│    playerSvc.SetVolume(a.volume)   │
+│    → langsung render ulang         │
+└────────────────────────────────────┘
+```
+
+**Key principles:**
+1. `SetVolume()` update cache + mpv + config — immediate
+2. `poll()` re-sync dari mpv tiap 500ms — anti drift
+3. Display baca dari cache (`playerSvc.Volume()`), bukan dari track state
+4. Mute/unmute pake `playerSvc.Volume()` (actual mpv state), bukan `a.volume`
+
+---
+
+## Git Repository
+
+### Remote
+```
+origin → git@github.com:CInna09/Youtube-Cli.git
+```
+
+### First Commit
+```
+aa70e67 — Initial commit: YTcliV2 — YouTube TUI with mpv/cava
+17 files, 2231 lines
+```
+
+### .gitignore
+```
+YTcliV2          # binary
+*.png            # generated images
+*.svg            # architecture diagrams
+yt-cli-shellV2/  # old prototypes
+yt-cli-shell.zip
+yt-cli-shellV2.zip
+*.swp *.swo *~   # editor files
+.DS_Store        # macOS
+```
+
+---
+
 ## Terminal Environment
 - **Terminal**: kitty (likely)
 - **Font**: Supports block chars ▁▂▃▄▅▆▇█ (full Unicode range)

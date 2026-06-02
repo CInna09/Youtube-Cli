@@ -79,8 +79,3 @@ func (c *CacheService) History() ([]*model.Video, error) {
 	copy(result, c.history)
 	return result, nil
 }
-
-// Bookmark marks a video (for v1 just adds to history).
-func (c *CacheService) Bookmark(v *model.Video) error {
-	return c.AddHistory(v)
-}

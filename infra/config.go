@@ -9,8 +9,9 @@ import (
 
 // Config holds application settings.
 type Config struct {
-	SocketPath    string `toml:"socket_path"`    // mpv IPC socket
-	DefaultVolume int    `toml:"default_volume"` // persisted volume (0-100)
+	SocketPath    string   `toml:"socket_path"`    // mpv IPC socket
+	DefaultVolume int      `toml:"default_volume"` // persisted volume (0-100)
+	ExtraArgs     []string `toml:"extra_args"`     // extra args passed to yt-dlp (e.g. ["--auth-from-browser"])
 }
 
 // DefaultConfig returns a Config with sensible defaults.

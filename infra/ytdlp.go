@@ -13,7 +13,8 @@ import (
 
 // YtdlpClient wraps the yt-dlp binary.
 type YtdlpClient struct {
-	Binary string // default: "yt-dlp"
+	Binary    string   // default: "yt-dlp"
+	ExtraArgs []string // extra args passed to every yt-dlp invocation
 }
 
 // NewYtdlpClient creates a default client.
@@ -42,6 +43,7 @@ func (c *YtdlpClient) Search(query string, limit int) ([]*model.Video, error) {
 		"--flat-playlist",
 		"--ignore-errors",
 	}
+	args = append(args, c.ExtraArgs...)
 
 	cmd := exec.Command(c.Binary, args...)
 	var stdout, stderr bytes.Buffer
@@ -79,13 +81,10 @@ func (c *YtdlpClient) Search(query string, limit int) ([]*model.Video, error) {
 // StreamURL resolves the best audio stream URL for a video ID.
 func (c *YtdlpClient) StreamURL(videoID string) (string, error) {
 	url := "https://youtube.com/watch?v=" + videoID
-	cmd := exec.Command(c.Binary,
-		"-f", "bestaudio",
-		"-g",
-		"--no-download",
-		"--ignore-errors",
-		url,
-	)
+	args := []string{"-f", "bestaudio", "-g", "--no-download", "--ignore-errors"}
+	args = append(args, c.ExtraArgs...)
+	args = append(args, url)
+	cmd := exec.Command(c.Binary, args...)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr

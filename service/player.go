@@ -54,8 +54,13 @@ func (s *PlayerService) Play(v *model.Video) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	// Stop previous poll goroutine before starting a new one
+	close(s.stopCh)
+	s.stopCh = make(chan struct{})
+
 	streamURL, err := s.search.StreamURL(v.ID)
 	if err != nil {
+		s.track = nil
 		return err
 	}
 
@@ -66,6 +71,7 @@ func (s *PlayerService) Play(v *model.Video) error {
 	}
 
 	if err := s.mpv.LoadURL(streamURL); err != nil {
+		s.track = nil
 		return err
 	}
 	s.mpv.SetVolume(s.volume)

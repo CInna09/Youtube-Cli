@@ -311,7 +311,12 @@ func truncate(s string, max int) string {
 }
 
 func formatDuration(secs float64) string {
-	m := int(secs) / 60
-	s := int(secs) % 60
+	t := int(secs)
+	h := t / 3600
+	m := (t % 3600) / 60
+	s := t % 60
+	if h > 0 {
+		return fmt.Sprintf("%d:%02d:%02d", h, m, s)
+	}
 	return fmt.Sprintf("%02d:%02d", m, s)
 }

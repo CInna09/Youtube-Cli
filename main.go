@@ -21,6 +21,7 @@ func main() {
 
 	// ── Infra ──
 	ytdlp := infra.NewYtdlpClient()
+	ytdlp.ExtraArgs = cfg.ExtraArgs
 	mpv := infra.NewMpvClient(cfg.SocketPath, "mpv")
 
 	// Try starting mpv (non-fatal if missing)

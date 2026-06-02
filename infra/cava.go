@@ -12,10 +12,6 @@ import (
 	"sync"
 )
 
-// CavaConfigDir is where we write the raw-output cava config.
-// Defaults to ~/.config/YTcliV2/ — caller can override.
-var CavaConfigDir string
-
 // CavaClient manages a cava(1) subprocess that outputs raw ASCII bar heights.
 // Use the Bars channel to receive per-frame bar values (0-1000).
 // If cava is not available or Start fails, Bars will never produce data
@@ -23,7 +19,6 @@ var CavaConfigDir string
 type CavaClient struct {
 	cmd    *exec.Cmd
 	Bars   chan []int // receives bar heights; buffered (1) so sender never blocks
-	done   chan struct{}
 	mu     sync.Mutex
 	running bool
 }
@@ -32,7 +27,6 @@ type CavaClient struct {
 func NewCavaClient() *CavaClient {
 	return &CavaClient{
 		Bars: make(chan []int, 1),
-		done: make(chan struct{}),
 	}
 }
 
@@ -54,11 +48,8 @@ func (c *CavaClient) Start() error {
 	}
 
 	// Write a minimal raw-output config
-	confDir := CavaConfigDir
-	if confDir == "" {
-		home, _ := os.UserHomeDir()
-		confDir = home + "/.config/YTcliV2"
-	}
+	home, _ := os.UserHomeDir()
+	confDir := home + "/.config/YTcliV2"
 	confPath := filepath.Join(confDir, "cava.conf")
 	if err := os.MkdirAll(confDir, 0755); err != nil {
 		return fmt.Errorf("cava config dir: %w", err)
@@ -105,7 +96,6 @@ func (c *CavaClient) Stop() {
 // readBars reads ASCII frames from cava's stdout and pushes them into Bars.
 func (c *CavaClient) readBars(stdout io.ReadCloser) {
 	defer stdout.Close()
-	defer close(c.done)
 
 	sc := bufio.NewScanner(stdout)
 	// Grow scanner buffer for long lines (20 bars × up to 4 digits + delimiters)
