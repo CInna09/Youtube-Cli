@@ -1,0 +1,19 @@
+# Binary
+YTcliV2
+
+# Old prototypes
+yt-cli-shellV2/
+yt-cli-shell.zip
+yt-cli-shellV2.zip
+
+# Generated images
+*.png
+
+# SVGs
+*.svg
+
+# Editor/OS
+*.swp
+*.swo
+*~
+.DS_Store
