@@ -1,0 +1,25 @@
+[package]
+name = "rustyoutube-cli"
+version = "0.1.0"
+edition = "2021"
+description = "YouTube TUI — search, play, visualizer"
+
+[dependencies]
+ratatui = "0.29"
+crossterm = "0.28"
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+cpal = "0.15"
+rustfft = "6"
+dasp_sample = "0.11"
+rand = "0.8"
+toml = "0.8"
+unicode-width = "0.2"
+
+[profile.release]
+opt-level = 3
+lto = true
+strip = true
