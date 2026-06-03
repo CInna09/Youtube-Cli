@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 use anyhow::Result;
 use crossterm::event::{self, Event as CEvent, KeyCode, KeyEvent, KeyModifiers};
 
-use crate::model::{Playlist, Track, Video};
+use crate::model::{Playlist, RepeatMode, Track, Video};
 use crate::mpv::Mpv;
 use crate::ytdlp::Ytdlp;
 use crate::visualizer::Visualizer;
@@ -38,6 +38,7 @@ pub struct App {
 
     // Search
     pub query: String,
+    pub search_query: String,  // original query disimpan buat load-more
     pub results: Vec<Video>,
     pub cursor: usize,
     pub scroll_offset: usize,
@@ -56,6 +57,9 @@ pub struct App {
 
     // Auto-next guard (cegah re-trigger)
     autonext_cooldown: u8,
+
+    // Repeat mode
+    pub repeat: RepeatMode,
 
     // Visualizer
     viz_rx: Option<mpsc::Receiver<Vec<u8>>>,
@@ -76,8 +80,9 @@ struct SearchResult {
 }
 
 impl App {
-    pub fn new(ytdlp: Ytdlp, mpv: Mpv) -> Self {
+    pub fn with_config(ytdlp: Ytdlp, mpv: Mpv, default_volume: u8) -> Self {
         let (search_tx, search_rx) = mpsc::channel();
+        let vol = default_volume.min(100);
 
         Self {
             input_mode: InputMode::Search,
@@ -85,6 +90,7 @@ impl App {
             height: 24,
             view: View::Search,
             query: String::new(),
+            search_query: String::new(),
             results: Vec::new(),
             cursor: 0,
             scroll_offset: 0,
@@ -92,11 +98,12 @@ impl App {
             error: None,
             track: None,
             playlist: Playlist::new(),
-            volume: 50,
-            muted_volume: 50,
+            volume: vol,
+            muted_volume: vol,
             eq_bars: Vec::new(),
             tick: 0,
             autonext_cooldown: 0,
+            repeat: RepeatMode::Off,
             viz_rx: None,
             _visualizer: None,
             ytdlp,
@@ -162,14 +169,29 @@ impl App {
             if self.searching {
                 if let Ok(result) = self.search_rx.try_recv() {
                     self.searching = false;
-                    self.results = result.videos.clone();
                     self.error = result.error;
-                    self.cursor = 0;
-                    self.scroll_offset = 0;
-                    // Auto-load hasil search ke playlist
-                    self.playlist.clear();
-                    self.playlist.enqueue(result.videos);
-                    self.input_mode = InputMode::Normal;
+                    if result.videos.is_empty() {
+                        if self.results.is_empty() {
+                            self.error = Some("No results found".into());
+                        } else {
+                            self.error = Some("No more results".into());
+                        }
+                    } else if self.results.is_empty() {
+                        // Fresh search — replace
+                        self.results = result.videos.clone();
+                        self.cursor = 0;
+                        self.scroll_offset = 0;
+                        self.playlist.clear();
+                        self.playlist.enqueue(result.videos);
+                        self.input_mode = InputMode::Normal;
+                    } else {
+                        // Load-more — append
+                        let n = result.videos.len();
+                        self.results.extend(result.videos);
+                        self.playlist.enqueue(
+                            self.results[self.results.len().saturating_sub(n)..].to_vec(),
+                        );
+                    }
                 }
             }
 
@@ -229,14 +251,35 @@ impl App {
                     if !track.video.is_live && !track.paused {
                         let eof = self.mpv.get_eof_reached().unwrap_or(false);
                         if eof {
-                            if self.playlist.current + 1 < self.playlist.len() {
-                                if let Err(e) = self.play_next() {
-                                    self.error = Some(format!("auto-next: {}", e));
+                            match self.repeat {
+                                RepeatMode::One => {
+                                    // Putar ulang lagu yang sama
+                                    if let Some(video) = self.playlist.items.get(self.playlist.current).cloned() {
+                                        if let Err(e) = self.play_video(video) {
+                                            self.error = Some(format!("auto-repeat-one: {}", e));
+                                        }
+                                    }
                                 }
-                                self.autonext_cooldown = 10; // 1 detik cooldown
-                            } else {
-                                self.stop().ok();
+                                RepeatMode::All => {
+                                    // Loop playlist: balik ke awal
+                                    self.playlist.current = 0;
+                                    if let Some(video) = self.playlist.items.first().cloned() {
+                                        if let Err(e) = self.play_video(video) {
+                                            self.error = Some(format!("auto-repeat-all: {}", e));
+                                        }
+                                    }
+                                }
+                                RepeatMode::Off => {
+                                    if self.playlist.current + 1 < self.playlist.len() {
+                                        if let Err(e) = self.play_next() {
+                                            self.error = Some(format!("auto-next: {}", e));
+                                        }
+                                    } else {
+                                        self.stop().ok();
+                                    }
+                                }
                             }
+                            self.autonext_cooldown = 10; // 1 detik cooldown
                         }
                     }
                 }
@@ -410,6 +453,20 @@ impl App {
             KeyCode::F(4) | KeyCode::Char('s') => {
                 self.stop()?;
             }
+            // Shuffle — acak playlist
+            KeyCode::Char('x') | KeyCode::Char('X') => {
+                self.playlist.toggle_shuffle();
+            }
+            // Repeat — ganti mode
+            KeyCode::Char('r') | KeyCode::Char('R') => {
+                self.repeat = self.repeat.next();
+            }
+            // Load More — tambah hasil search
+            KeyCode::Char('l') | KeyCode::Char('L') => {
+                if !self.search_query.is_empty() {
+                    self.load_more();
+                }
+            }
             _ => {}
         }
         Ok(false)
@@ -487,6 +544,7 @@ impl App {
         }
 
         self.searching = true;
+        self.search_query = query.clone();
         self.error = None;
         self.cursor = 0;
 
@@ -497,6 +555,42 @@ impl App {
             let result = match ytdlp.search(&query, 50) {
                 Ok(videos) => SearchResult { videos, error: None },
                 Err(e) => SearchResult { videos: Vec::new(), error: Some(e.to_string()) },
+            };
+            let _ = tx.send(result);
+        });
+    }
+
+    fn load_more(&mut self) {
+        if self.search_query.is_empty() || self.searching {
+            return;
+        }
+        self.searching = true;
+        self.error = None;
+
+        let query = self.search_query.clone();
+        let existing_ids: std::collections::HashSet<String> =
+            self.results.iter().map(|v| v.id.clone()).collect();
+
+        let tx = self.search_tx.clone();
+
+        thread::spawn(move || {
+            let ytdlp = Ytdlp::new();
+            let result = match ytdlp.search(&query, 50) {
+                Ok(videos) => {
+                    // Filter out videos we already have (by ID)
+                    let new_videos: Vec<Video> = videos
+                        .into_iter()
+                        .filter(|v| !existing_ids.contains(&v.id))
+                        .collect();
+                    SearchResult {
+                        videos: new_videos,
+                        error: None,
+                    }
+                }
+                Err(e) => SearchResult {
+                    videos: Vec::new(),
+                    error: Some(e.to_string()),
+                },
             };
             let _ = tx.send(result);
         });

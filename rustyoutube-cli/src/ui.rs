@@ -198,9 +198,13 @@ fn draw_sidebar(f: &mut Frame, area: Rect, app: &App) {
     let next_style = if has_next { theme::key_style() } else { theme::dim_style() };
     let prev_style = if has_prev { theme::key_style() } else { theme::dim_style() };
 
+    // Repeat mode label
+    let repeat_label = app.repeat.label();
+    let shuffle_label = if app.playlist.shuffled { "On" } else { "Off" };
+
     let keybind_lines = vec![
         Line::from(Span::styled(" Controls", Style::default().fg(theme::OVERLAY1))),
-        Line::from(Span::styled(" [P/Space] Play/Pause", theme::key_style())),
+        Line::from(Span::styled(" [Space] Play/Pause", theme::key_style())),
         Line::from(Span::styled(" [S]  Stop", theme::key_style())),
         Line::from(vec![
             Span::styled(" [N]  Next", next_style),
@@ -210,8 +214,17 @@ fn draw_sidebar(f: &mut Frame, area: Rect, app: &App) {
         ]),
         Line::from(Span::styled(" [V]  Vol +/-", theme::key_style())),
         Line::from(Span::styled(" [/]  Search", theme::key_style())),
+        Line::from(Span::styled(" [L]  Load More", theme::key_style())),
         Line::from(Span::styled(" [←→] Seek 5s", theme::key_style())),
         Line::from(Span::styled(" [↑↓] Nav", theme::key_style())),
+        Line::from(vec![
+            Span::styled(" [R] Repeat: ", theme::key_style()),
+            Span::styled(repeat_label, Style::default().fg(theme::TEAL).bold()),
+        ]),
+        Line::from(vec![
+            Span::styled(" [X] Shuffle: ", theme::key_style()),
+            Span::styled(shuffle_label, Style::default().fg(theme::TEAL).bold()),
+        ]),
         Line::from(Span::styled(" [^C] Quit", theme::key_style())),
     ];
     f.render_widget(Paragraph::new(keybind_lines), parts[next_part_idx]);
@@ -481,7 +494,7 @@ fn draw_statusbar(f: &mut Frame, area: Rect, app: &App) {
     } else {
         let help = match app.input_mode {
             InputMode::Search => " [Enter] Search  [↑↓] Nav  [F1] Mute  [F2/F3] Vol  [F4] Stop  [^C] Quit",
-            InputMode::Normal => " [Enter/Space] Play  [N] Next  [P] Prev  [S] Stop  [/] Search  [^C] Quit",
+            InputMode::Normal => " [Enter/Space] Play  [N] Next  [P] Prev  [S] Stop  [R] Repeat  [X] Shuffle  [L] Load More  [/] Search  [^C] Quit",
         };
         f.render_widget(
             Paragraph::new(Span::styled(help, Style::default().fg(theme::OVERLAY1)))

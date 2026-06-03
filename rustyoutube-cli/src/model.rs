@@ -1,5 +1,32 @@
 /// Data structures — Video, Track, Playlist.
 
+use rand::seq::SliceRandom;
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum RepeatMode {
+    Off,
+    All,
+    One,
+}
+
+impl RepeatMode {
+    pub fn next(&self) -> Self {
+        match self {
+            Self::Off => Self::All,
+            Self::All => Self::One,
+            Self::One => Self::Off,
+        }
+    }
+
+    pub fn label(&self) -> &'static str {
+        match self {
+            Self::Off => "Off",
+            Self::All => "All",
+            Self::One => "One",
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Video {
     pub id: String,
@@ -23,11 +50,18 @@ pub struct Track {
 pub struct Playlist {
     pub items: Vec<Video>,
     pub current: usize,
+    pub shuffled: bool,
+    original_items: Vec<Video>,
 }
 
 impl Playlist {
     pub fn new() -> Self {
-        Self { items: Vec::new(), current: 0 }
+        Self {
+            items: Vec::new(),
+            current: 0,
+            shuffled: false,
+            original_items: Vec::new(),
+        }
     }
 
     pub fn len(&self) -> usize {
@@ -43,6 +77,7 @@ impl Playlist {
         }
     }
 
+    /// Next item. Returns `None` if at end (caller checks repeat mode).
     pub fn next(&mut self) -> Option<&Video> {
         if self.current + 1 < self.items.len() {
             self.current += 1;
@@ -68,6 +103,44 @@ impl Playlist {
     pub fn clear(&mut self) {
         self.items.clear();
         self.current = 0;
+        self.shuffled = false;
+        self.original_items.clear();
+    }
+
+    // ── Shuffle ──
+
+    pub fn shuffle(&mut self) {
+        if self.shuffled || self.items.is_empty() {
+            return;
+        }
+        self.shuffled = true;
+        self.original_items = self.items.clone();
+        let current_id = self.items.get(self.current).map(|v| v.id.clone());
+        self.items.shuffle(&mut rand::thread_rng());
+        // cari posisi item yang sedang diputar di hasil shuffle
+        if let Some(ref id) = current_id {
+            self.current = self.items.iter().position(|v| v.id == *id).unwrap_or(0);
+        }
+    }
+
+    pub fn unshuffle(&mut self) {
+        if !self.shuffled || self.original_items.is_empty() {
+            return;
+        }
+        let current_id = self.items.get(self.current).map(|v| v.id.clone());
+        self.items = std::mem::take(&mut self.original_items);
+        self.shuffled = false;
+        if let Some(ref id) = current_id {
+            self.current = self.items.iter().position(|v| v.id == *id).unwrap_or(0);
+        }
+    }
+
+    pub fn toggle_shuffle(&mut self) {
+        if self.shuffled {
+            self.unshuffle();
+        } else {
+            self.shuffle();
+        }
     }
 }
 
