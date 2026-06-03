@@ -1,0 +1,13 @@
+# Rust build
+target/
+
+# Editor
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Session files (local dev only)
+session.md
+ROADMAP.md
+*.session
