@@ -6,7 +6,13 @@
 
 Terminal UI untuk mencari dan memutar audio YouTube via **mpv** + **yt-dlp**, dengan visualizer FFT real-time.
 
-![Preview](https://raw.githubusercontent.com/I-XXII-V/Youtube-Cli/main/preview.png)
+![Preview](pic/preview-player.png)
+
+<details>
+<summary>📸 Tampilan search</summary>
+
+![Search](pic/preview-search.png)
+</details>
 
 ---
 
@@ -26,10 +32,19 @@ Terminal UI untuk mencari dan memutar audio YouTube via **mpv** + **yt-dlp**, de
 
 ## 🚀 Installasi
 
-### Arch Linux (recommended)
+### Prerequisites
+
+| Dependency | Debian/Ubuntu | Arch Linux | Fedora | macOS |
+|-----------|--------------|------------|--------|-------|
+| **mpv** | `sudo apt install mpv` | `sudo pacman -S mpv` | `sudo dnf install mpv` | `brew install mpv` |
+| **yt-dlp** | `sudo apt install yt-dlp` | `sudo pacman -S yt-dlp` | `sudo dnf install yt-dlp` | `brew install yt-dlp` |
+
+Atau install manual: [mpv.io](https://mpv.io/install/) · [yt-dlp](https://github.com/yt-dlp/yt-dlp#installation)
+
+### Dari source (semua OS)
 
 ```bash
-# Dari source — Rust wajib terinstall
+# Rust wajib terinstall — https://rustup.rs
 git clone https://github.com/I-XXII-V/Youtube-Cli.git
 cd Youtube-Cli/rustyoutube-cli
 cargo build --release
@@ -41,21 +56,14 @@ cargo install --path .
 
 ### Via binary release
 
-Download dari [GitHub Releases](https://github.com/I-XXII-V/Youtube-Cli/releases):
+Download binary dari [GitHub Releases](https://github.com/I-XXII-V/Youtube-Cli/releases) (tersedia untuk Linux, macOS, Windows):
 
 ```bash
-# Linux
-curl -L https://github.com/I-XXII-V/Youtube-Cli/releases/latest/download/rustyoutube-cli-x86_64-unknown-linux-gnu.tar.gz
+# Contoh Linux
+curl -OL https://github.com/I-XXII-V/Youtube-Cli/releases/latest/download/rustyoutube-cli-x86_64-unknown-linux-gnu.tar.gz
 tar xzf rustyoutube-cli-*.tar.gz
 sudo mv rustyoutube-cli /usr/local/bin/
 ```
-
-### Prerequisites
-
-| Dependency | Cara install (Arch) |
-|-----------|-------------------|
-| **mpv** | `sudo pacman -S mpv` |
-| **yt-dlp** | `sudo pacman -S yt-dlp` |
 
 ## 🎮 Penggunaan
 
