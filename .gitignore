@@ -12,6 +12,9 @@ yt-cli-shellV2.zip
 # SVGs
 *.svg
 
+# Rust build artifacts
+rustyoutube-cli/target/
+
 # Editor/OS
 *.swp
 *.swo

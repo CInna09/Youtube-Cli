@@ -488,7 +488,7 @@ cava is a mature, optimized C implementation using PulseAudio/PipeWire APIs for 
 
 ### Remote
 ```
-origin → git@github.com:CInna09/Youtube-Cli.git
+origin → git@github.com:I-XXII-V/Youtube-Cli.git
 ```
 
 ### First Commit
