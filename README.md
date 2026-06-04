@@ -136,38 +136,6 @@ src/
 | CLI | `clap` | Argument parsing |
 | Config | `toml` + `serde` | Config file |
 
-## 🔧 Development
-
-```bash
-git clone https://github.com/I-XXII-V/Youtube-Cli.git
-cd Youtube-Cli/rustyoutube-cli
-
-# Build + run
-cargo run --release
-
-# Atau build dulu, jalanin langsung
-cargo build --release
-./target/release/rustyoutube-cli
-```
-
-### Code style
-
-```bash
-cargo clippy -- -D warnings
-cargo fmt
-```
-
-## 📦 Release
-
-Buat release baru dengan tag:
-
-```bash
-git tag v0.1.0
-git push origin v0.1.0
-```
-
-GitHub Actions akan otomatis build binary untuk Linux, macOS, dan Windows, lalu upload ke Release.
-
 ## 📜 Lisensi
 
 MIT — bebas pakai, bebas modifikasi, bebas sebar.
