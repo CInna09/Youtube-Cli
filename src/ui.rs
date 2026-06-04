@@ -67,7 +67,7 @@ fn draw_top_left(f: &mut Frame, area: Rect, app: &App) {
     if h >= 1 {
         f.render_widget(
             Paragraph::new(Span::styled(
-                " ▶ YT-CLI v0.3",
+                " ▶ YT-CLI v0.3.1",
                 Style::default().fg(theme::TEAL).bold(),
             )).style(Style::default().bg(theme::BASE)),
             rows[0],
@@ -120,31 +120,38 @@ fn draw_top_right(f: &mut Frame, area: Rect, app: &App) {
         InputMode::Normal => Span::styled(" NORMAL ", Style::default().fg(theme::CRUST).bg(theme::SAPPHIRE).bold()),
     };
 
-    let cursor = if app.input_mode == InputMode::Search { " █" } else { "" };
-    let search_text = if app.query.is_empty() {
-        " Search: ".to_string()
+    // Baris 1: mode tag + prompt (tanpa query biar g dobel)
+    let prompt = if app.input_mode == InputMode::Search {
+        " Search: "
     } else {
-        format!(" {}", app.query)
+        " / = Search"
     };
 
     if h >= 1 {
+        let cursor = if app.input_mode == InputMode::Search { "█" } else { "" };
         f.render_widget(
             Paragraph::new(Line::from(vec![
                 mode_tag,
-                Span::styled(search_text, Style::default().fg(theme::TEXT)),
+                Span::styled(prompt, Style::default().fg(theme::OVERLAY1)),
                 Span::styled(cursor, Style::default().fg(theme::TEAL)),
-            ])).style(Style::default().bg(theme::MANTLE)),
+            ])).alignment(Alignment::Left)
+              .style(Style::default().bg(theme::MANTLE)),
             rows[0],
         );
     }
-    if h >= 2 && app.input_mode == InputMode::Search {
-        f.render_widget(
-            Paragraph::new(Span::styled(
-                &app.query,
-                Style::default().fg(theme::TEXT),
-            )).style(Style::default().bg(theme::MANTLE)),
-            rows[1],
-        );
+
+    // Baris 2: query input (hanya di search mode)
+    if h >= 2 {
+        if app.input_mode == InputMode::Search {
+            f.render_widget(
+                Paragraph::new(Line::from(vec![
+                    Span::styled(" ", Style::default().fg(theme::TEXT)),
+                    Span::styled(&app.query, Style::default().fg(theme::TEXT)),
+                    Span::styled("█", Style::default().fg(theme::TEAL)),
+                ])).style(Style::default().bg(theme::MANTLE)),
+                rows[1],
+            );
+        }
     }
 }
 
@@ -200,8 +207,8 @@ fn draw_sidebar(f: &mut Frame, area: Rect, app: &App) {
         Line::from(Span::styled(" [L]  Load+", theme::key_style())),
         Line::from(Span::styled(" [g]  Top", theme::key_style())),
         Line::from(Span::styled(" [G]  Bot", theme::key_style())),
-        Line::from(Span::styled(" [^U] HalfUp", theme::key_style())),
-        Line::from(Span::styled(" [^D] HalfDn", theme::key_style())),
+        Line::from(Span::styled(" [C-u] PgUp½", theme::key_style())),
+        Line::from(Span::styled(" [C-d] PgDn½", theme::key_style())),
         Line::from(Span::styled(" [-]  Vol-5", theme::key_style())),
         Line::from(Span::styled(" [=]  Vol+5", theme::key_style())),
         Line::from(Span::styled(" [[]  Vol-1", theme::key_style())),
@@ -209,7 +216,7 @@ fn draw_sidebar(f: &mut Frame, area: Rect, app: &App) {
         Line::from(Span::styled(" [←]  -5s", theme::key_style())),
         Line::from(Span::styled(" [→]  +5s", theme::key_style())),
         Line::from(Span::styled(" [F1] Mute", theme::key_style())),
-        Line::from(Span::styled(" [^C] Quit", theme::key_style())),
+        Line::from(Span::styled(" [C-c] Quit", theme::key_style())),
     ];
 
     f.render_widget(Paragraph::new(keybind_lines), inner);
@@ -425,10 +432,13 @@ fn draw_scrollbar(f: &mut Frame, area: Rect, app: &App) {
 // ── Bottom: spectrum (row 0), separator (row 1), status bar (row 2) ──
 
 fn draw_bottom(f: &mut Frame, spec_area: Rect, sep_area: Rect, status_area: Rect, app: &App) {
-    // ── Spectrum / Volume (row 0) ──
+    // ── Spectrum / Volume (row 0) — full width ──
+    let spec_w = spec_area.width.saturating_sub(10) as usize; // " Spectrum " = 10
     if !app.eq_bars.is_empty() {
-        let spectrum: String = app.eq_bars.iter()
-            .map(|&b| BLOCKS[b as usize])
+        // Tile bars to fill full width
+        let n = app.eq_bars.len().max(1);
+        let spectrum: String = (0..spec_w)
+            .map(|i| BLOCKS[app.eq_bars[(i * n / spec_w.max(1)).min(n - 1)] as usize])
             .collect();
         f.render_widget(
             Paragraph::new(Line::from(vec![
@@ -438,8 +448,9 @@ fn draw_bottom(f: &mut Frame, spec_area: Rect, sep_area: Rect, status_area: Rect
             spec_area,
         );
     } else {
-        let filled = (app.volume as usize * (spec_area.width.saturating_sub(12) as usize)) / 100;
-        let empty = spec_area.width.saturating_sub(12) as usize - filled;
+        let bar_w = spec_w.saturating_sub(2);
+        let filled = (app.volume as usize * bar_w) / 100;
+        let empty = bar_w.saturating_sub(filled);
         let bar = format!("[{}{}]", "█".repeat(filled), "░".repeat(empty));
         f.render_widget(
             Paragraph::new(Line::from(vec![
@@ -485,8 +496,8 @@ fn draw_bottom(f: &mut Frame, spec_area: Rect, sep_area: Rect, status_area: Rect
         );
     } else {
         let help = match app.input_mode {
-            InputMode::Search => " [Enter] Search  [↑↓] Nav  [F1] Mute  [-=][] Vol  [^C] Quit",
-            InputMode::Normal => " [Spc]Play  [N]Next  [P]Prev  [g]Top  [G]Bot  [/]Search  [L]Load+",
+            InputMode::Search => " [Enter]Search [↑↓]Nav [-=][]Vol [F1]Mute [C-c]Quit",
+            InputMode::Normal => " [Spc]Play [N]Next [P]Prev [g]Top [G]Bot [/]Search [C-c]Quit",
         };
         f.render_widget(
             Paragraph::new(Span::styled(help, Style::default().fg(theme::OVERLAY1)))
