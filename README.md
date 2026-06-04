@@ -46,7 +46,7 @@ Atau install manual: [mpv.io](https://mpv.io/install/) · [yt-dlp](https://githu
 ```bash
 # Rust wajib terinstall — https://rustup.rs
 git clone https://github.com/I-XXII-V/Youtube-Cli.git
-cd Youtube-Cli/rustyoutube-cli
+cd Youtube-Cli
 cargo build --release
 sudo cp target/release/rustyoutube-cli /usr/local/bin/
 
