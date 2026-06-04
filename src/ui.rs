@@ -536,7 +536,6 @@ mod theme {
     pub const SURFACE2: Color = Color::Rgb(0x58, 0x5b, 0x70);
     pub const TEXT: Color     = Color::Rgb(0xcd, 0xd6, 0xf4);
     pub const SUBTEXT0: Color = Color::Rgb(0xa6, 0xad, 0xc8);
-    pub const SUBTEXT1: Color = Color::Rgb(0xba, 0xc2, 0xde);
     pub const OVERLAY1: Color = Color::Rgb(0x7f, 0x84, 0x9c);
     pub const OVERLAY2: Color = Color::Rgb(0x9c, 0xa0, 0xb0);
     pub const TEAL: Color     = Color::Rgb(0x94, 0xe2, 0xd5);
