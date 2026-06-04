@@ -138,9 +138,9 @@ fn draw_sidebar(f: &mut Frame, area: Rect, app: &App) {
     // ── Logo ──
     let logo_lines = vec![
         Line::from(Span::styled(" ╭──────────────╮", Style::default().fg(theme::SURFACE2))),
-        Line::from(Span::styled(" │  ( ▶ ) YT   │", Style::default().fg(theme::TEAL).bold())),
+        Line::from(Span::styled(" │   (▶) YT     │", Style::default().fg(theme::TEAL).bold())),
         Line::from(Span::styled(" ╰──────────────╯", Style::default().fg(theme::SURFACE2))),
-        Line::from(Span::styled("    YT-CLI", Style::default().fg(theme::OVERLAY1))),
+        Line::from(Span::styled("   YT-CLI v0.1", Style::default().fg(theme::OVERLAY1))),
     ];
     f.render_widget(Paragraph::new(logo_lines), parts[0]);
 

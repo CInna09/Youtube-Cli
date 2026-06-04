@@ -307,10 +307,12 @@ impl App {
             KeyCode::F(2) => {
                 self.volume = self.volume.saturating_sub(5);
                 self.mpv.set_volume(self.volume)?;
+                if let Some(ref mut t) = self.track { t.volume = self.volume; }
             }
             KeyCode::F(3) => {
                 self.volume = (self.volume + 5).min(100);
                 self.mpv.set_volume(self.volume)?;
+                if let Some(ref mut t) = self.track { t.volume = self.volume; }
             }
             KeyCode::F(4) => self.stop()?,
             KeyCode::Left => {
@@ -445,10 +447,12 @@ impl App {
             KeyCode::F(2) | KeyCode::Char('-') => {
                 self.volume = self.volume.saturating_sub(5);
                 self.mpv.set_volume(self.volume)?;
+                if let Some(ref mut t) = self.track { t.volume = self.volume; }
             }
             KeyCode::F(3) | KeyCode::Char('=') | KeyCode::Char('+') => {
                 self.volume = (self.volume + 5).min(100);
                 self.mpv.set_volume(self.volume)?;
+                if let Some(ref mut t) = self.track { t.volume = self.volume; }
             }
             KeyCode::F(4) | KeyCode::Char('s') => {
                 self.stop()?;
@@ -646,10 +650,15 @@ impl App {
         let vol = self.mpv.get_volume()?;
         if vol > 0 {
             self.muted_volume = vol;
+            self.volume = 0;
             self.mpv.set_volume(0)?;
         } else {
             let restore = if self.muted_volume > 0 { self.muted_volume } else { 30 };
+            self.volume = restore;
             self.mpv.set_volume(restore)?;
+        }
+        if let Some(ref mut track) = self.track {
+            track.volume = self.volume;
         }
         Ok(())
     }

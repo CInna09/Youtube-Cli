@@ -23,7 +23,7 @@ Terminal UI untuk mencari dan memutar audio YouTube via **mpv** + **yt-dlp**, de
 | 🔍 **Search** | Cari video YouTube langsung dari terminal (max ~50 results) |
 | ▶️ **Play** | Putar audio via mpv (streaming, tanpa download) |
 | 📋 **Playlist** | Next/Prev/Shuffle/Repeat (Off · All · One) |
-| 🎚 **Volume** | `-` `=` atau F2/F3, mute F1 |
+| 🎚 **Volume** | `-` `=` atau F2/F3 (Fn+F2/F3 di ThinkPad), mute F1 |
 | ⏪⏩ **Seek** | `←` `→` maju/mundur 5 detik |
 | 📊 **Visualizer** | Spectrum 20 bar real-time dari FFT audio capture |
 | 🎨 **Catppuccin Mocha** | Tema dark yang easy on the eyes |
@@ -93,7 +93,7 @@ rustyoutube-cli --socket /tmp/mpv-socket --mpv-bin /usr/bin/mpv --ytdlp-bin /usr
 | | `←` `→` | Seek ±5 detik |
 | | `-` `=` | Volume turun/naik |
 | | `F1` | Mute |
-| | `F2` `F3` | Volume turun/naik |
+| | `F2` `F3` | Volume turun/naik (Fn+F2/F3 di ThinkPad) |
 | | `F4` | Stop |
 | | `^C` | Quit |
 | **Search** | `Enter` | Search |

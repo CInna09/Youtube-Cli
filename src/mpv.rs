@@ -135,7 +135,11 @@ impl Mpv {
 
     pub fn get_volume(&self) -> Result<u8> {
         let data = self.send(&["get_property".into(), "volume".into()])?;
-        Ok(data.and_then(|v| v.as_f64()).map(|v| v as u8).unwrap_or(50))
+        let vol = data
+            .and_then(|v| v.as_f64())
+            .map(|v| v as u8)
+            .context("mpv: volume property returned null")?;
+        Ok(vol)
     }
 
     pub fn get_position(&self) -> Result<f64> {
