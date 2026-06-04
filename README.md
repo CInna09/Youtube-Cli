@@ -79,22 +79,23 @@ rustyoutube-cli --socket /tmp/mpv-socket --mpv-bin /usr/bin/mpv --ytdlp-bin /usr
 | Mode | Key | Aksi |
 |------|-----|------|
 | **Normal** | `Enter` / `Space` | Putar selected |
-| | `j` / `k` | Navigasi bawah/atas |
-| | `↑` `↓` | Navigasi |
+| | `j` / `k` `↑` `↓` | Navigasi |
 | | `PgUp` `PgDn` | Scroll cepat |
-| | `Home` `End` | Awal/akhir daftar |
+| | `g` | Ke hasil pertama (vim `gg`) |
+| | `G` | Ke hasil terakhir (vim `G`) |
+| | `Ctrl+d` / `Ctrl+u` | Scroll setengah halaman |
 | | `/` | Mode search |
-| | `n` | Next lagu |
-| | `p` | Prev lagu |
+| | `n` / `w` | Next lagu |
+| | `p` / `b` | Prev lagu |
 | | `s` | Stop |
 | | `r` | Repeat (Off → All → One) |
 | | `x` | Shuffle on/off |
 | | `l` | Load more results |
 | | `←` `→` | Seek ±5 detik |
-| | `-` `=` | Volume turun/naik |
+| | `-` `=` | Volume ±5% (coarse) |
+| | `[` `]` | Volume ±1% (fine) |
 | | `F1` | Mute |
-| | `F2` `F3` | Volume turun/naik (Fn+F2/F3 di ThinkPad) |
-| | `F4` | Stop |
+| | `F2` `F3` | Volume ±5% (Fn+F2/F3 di ThinkPad) |
 | | `^C` | Quit |
 | **Search** | `Enter` | Search |
 | | `Esc` / `/` | Batal |

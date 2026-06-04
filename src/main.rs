@@ -63,9 +63,10 @@ fn main() -> Result<()> {
     let ytdlp = ytdlp::Ytdlp::new();
     let mpv = mpv::Mpv::new(&cli.socket, &cli.mpv_bin);
 
-    // Default volume (config → 50)
+    // Default volume (config → state persist → 50)
     let default_volume = cfg.as_ref()
         .and_then(|c| c.default_volume)
+        .or_else(|| config::Config::load_state().map(|s| s.volume))
         .unwrap_or(50);
     let mut app = app::App::with_config(ytdlp, mpv, default_volume);
     app.run()

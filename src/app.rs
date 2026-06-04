@@ -8,6 +8,7 @@ use std::time::{Duration, Instant};
 use anyhow::Result;
 use crossterm::event::{self, Event as CEvent, KeyCode, KeyEvent, KeyModifiers};
 
+use crate::config::Config;
 use crate::model::{Playlist, RepeatMode, Track, Video};
 use crate::mpv::Mpv;
 use crate::ytdlp::Ytdlp;
@@ -308,11 +309,13 @@ impl App {
                 self.volume = self.volume.saturating_sub(5);
                 self.mpv.set_volume(self.volume)?;
                 if let Some(ref mut t) = self.track { t.volume = self.volume; }
+                self.persist_volume();
             }
             KeyCode::F(3) => {
                 self.volume = (self.volume + 5).min(100);
                 self.mpv.set_volume(self.volume)?;
                 if let Some(ref mut t) = self.track { t.volume = self.volume; }
+                self.persist_volume();
             }
             KeyCode::F(4) => self.stop()?,
             KeyCode::Left => {
@@ -429,10 +432,10 @@ impl App {
                     self.play_at_cursor()?;
                 }
             }
-            // n = next
-            KeyCode::Char('n') => self.play_next()?,
-            // p = prev
-            KeyCode::Char('p') => self.play_prev()?,
+            // n / w = next (w seperti vim word motion)
+            KeyCode::Char('n') | KeyCode::Char('w') => self.play_next()?,
+            // p / b = prev (b seperti vim word motion back)
+            KeyCode::Char('p') | KeyCode::Char('b') => self.play_prev()?,
             KeyCode::Left => {
                 if self.track.is_some() {
                     self.mpv.seek(-5.0).ok();
@@ -448,11 +451,26 @@ impl App {
                 self.volume = self.volume.saturating_sub(5);
                 self.mpv.set_volume(self.volume)?;
                 if let Some(ref mut t) = self.track { t.volume = self.volume; }
+                self.persist_volume();
             }
             KeyCode::F(3) | KeyCode::Char('=') | KeyCode::Char('+') => {
                 self.volume = (self.volume + 5).min(100);
                 self.mpv.set_volume(self.volume)?;
                 if let Some(ref mut t) = self.track { t.volume = self.volume; }
+                self.persist_volume();
+            }
+            // Fine volume ±1% (vim-style [ / ])
+            KeyCode::Char('[') => {
+                self.volume = self.volume.saturating_sub(1);
+                self.mpv.set_volume(self.volume)?;
+                if let Some(ref mut t) = self.track { t.volume = self.volume; }
+                self.persist_volume();
+            }
+            KeyCode::Char(']') => {
+                self.volume = (self.volume + 1).min(100);
+                self.mpv.set_volume(self.volume)?;
+                if let Some(ref mut t) = self.track { t.volume = self.volume; }
+                self.persist_volume();
             }
             KeyCode::F(4) | KeyCode::Char('s') => {
                 self.stop()?;
@@ -470,6 +488,28 @@ impl App {
                 if !self.search_query.is_empty() {
                     self.load_more();
                 }
+            }
+            // Vim: g → first result, G → last result
+            KeyCode::Char('g') => {
+                if !self.results.is_empty() {
+                    self.cursor = 0;
+                    self.scroll_offset = 0;
+                }
+            }
+            KeyCode::Char('G') => {
+                if !self.results.is_empty() {
+                    self.cursor = self.results.len().saturating_sub(1);
+                    self.scroll_offset = self.cursor.saturating_sub(self.visible_height());
+                }
+            }
+            // Vim: Ctrl+d / Ctrl+u → half page scroll
+            _ if key.code == KeyCode::Char('d') && key.modifiers == KeyModifiers::CONTROL => {
+                let half = self.visible_height().max(1) / 2;
+                for _ in 0..half { self.cursor_down(); }
+            }
+            _ if key.code == KeyCode::Char('u') && key.modifiers == KeyModifiers::CONTROL => {
+                let half = self.visible_height().max(1) / 2;
+                for _ in 0..half { self.cursor_up(); }
             }
             _ => {}
         }
@@ -668,5 +708,10 @@ impl App {
         self.track = None;
         self.view = View::Search;
         Ok(())
+    }
+
+    /// Simpan volume ke state file biar persist antar sesi.
+    fn persist_volume(&self) {
+        Config::save_state(&crate::config::State { volume: self.volume });
     }
 }
