@@ -116,7 +116,8 @@ impl Playlist {
         self.shuffled = true;
         self.original_items = self.items.clone();
         let current_id = self.items.get(self.current).map(|v| v.id.clone());
-        self.items.shuffle(&mut rand::thread_rng());
+        let mut rng = rand::rng();
+        self.items.shuffle(&mut rng);
         // cari posisi item yang sedang diputar di hasil shuffle
         if let Some(ref id) = current_id {
             self.current = self.items.iter().position(|v| v.id == *id).unwrap_or(0);

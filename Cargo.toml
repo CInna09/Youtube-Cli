@@ -15,7 +15,7 @@ clap = { version = "4", features = ["derive"] }
 cpal = "0.15"
 rustfft = "6"
 dasp_sample = "0.11"
-rand = "0.8"
+rand = "0.9"
 toml = "0.8"
 unicode-width = "0.2"
 
