@@ -29,13 +29,20 @@ jobs:
 
       - name: Install system dependencies (Linux)
         run: |
-          if [ "$RUNNER_OS" = "Linux" ]; then
-            sudo apt-get update -y
-            sudo apt-get install -y libasound2-dev pkg-config
-            echo "✅ ALSA installed"
-          else
-            echo "Skipping apt-get (not Linux)"
+          if [ "$(uname -s)" != "Linux" ]; then
+            echo "Skipping (not Linux)"
+            exit 0
           fi
+          echo "=== APT update ==="
+          sudo apt-get update -y 2>&1 | tail -3
+          echo "=== Install ALSA ==="
+          sudo apt-get install -y libasound2-dev pkg-config 2>&1 | tail -10
+          echo "=== Check pkg-config ==="
+          pkg-config --libs --cflags alsa && echo "✅ ALSA OK" || echo "❌ ALSA not found"
+          echo "=== Find alsa.pc ==="
+          find /usr -name "alsa.pc" 2>/dev/null || echo "alsa.pc not found"
+          echo "=== PKG_CONFIG_PATH ==="
+          echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH"
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
