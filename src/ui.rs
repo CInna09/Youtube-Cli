@@ -418,13 +418,17 @@ fn draw_scrollbar(f: &mut Frame, area: Rect, app: &App) {
 
 fn draw_bottom(f: &mut Frame, spec_area: Rect, sep_area: Rect, status_area: Rect, app: &App) {
     // ── Spectrum / Volume (row 0) — full width ──
-    let spec_w = spec_area.width.saturating_sub(10) as usize; // " Spectrum " = 10
     if !app.eq_bars.is_empty() {
-        // Tile bars to fill full width
-        let n = app.eq_bars.len().max(1);
-        let spectrum: String = (0..spec_w)
-            .map(|i| BLOCKS[app.eq_bars[(i * n / spec_w.max(1)).min(n - 1)] as usize])
-            .collect();
+        // Tampilkan 20 bar asli dengan spacing (gaya cava) — gak di-tile
+        let spectrum: String = app.eq_bars
+            .iter()
+            .map(|&b| {
+                let block = BLOCKS[b as usize];
+                format!("{} ", block) // bar + 1 spasi antar bar
+            })
+            .collect::<String>()
+            .trim_end()
+            .to_string();
         f.render_widget(
             Paragraph::new(Line::from(vec![
                 Span::styled(" Spectrum ", Style::default().fg(theme::OVERLAY1)),
@@ -433,7 +437,7 @@ fn draw_bottom(f: &mut Frame, spec_area: Rect, sep_area: Rect, status_area: Rect
             spec_area,
         );
     } else {
-        let bar_w = spec_w.saturating_sub(2);
+        let bar_w = spec_area.width.saturating_sub(12) as usize;
         let filled = (app.volume as usize * bar_w) / 100;
         let empty = bar_w.saturating_sub(filled);
         let bar = format!("[{}{}]", "█".repeat(filled), "░".repeat(empty));
