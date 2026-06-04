@@ -22,7 +22,7 @@ pub fn draw(f: &mut Frame, app: &App) {
     let root = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(4), // top: bordered, logo+search (2 lines)
+            Constraint::Length(3), // top: bordered, logo | search (1 line)
             Constraint::Min(5),    // body: keybinds + results
             Constraint::Length(1), // spectrum / volume bar
             Constraint::Length(1), // separator
@@ -47,7 +47,7 @@ fn draw_top(f: &mut Frame, area: Rect, app: &App) {
     draw_top_right(f, parts[1], app);
 }
 
-fn draw_top_left(f: &mut Frame, area: Rect, app: &App) {
+fn draw_top_left(f: &mut Frame, area: Rect, _app: &App) {
     let block = Block::default()
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
@@ -55,48 +55,15 @@ fn draw_top_left(f: &mut Frame, area: Rect, app: &App) {
         .style(Style::default().bg(theme::BASE));
 
     let inner = block.inner(area);
-    let h = inner.height as usize;
     f.render_widget(block, area);
 
-    // Use vertical split inside the bordered box
-    let rows = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints(vec![Constraint::Length(1); h])
-        .split(inner);
-
-    if h >= 1 {
-        f.render_widget(
-            Paragraph::new(Span::styled(
-                " ▶ YT-CLI v0.3.1",
-                Style::default().fg(theme::TEAL).bold(),
-            )).style(Style::default().bg(theme::BASE)),
-            rows[0],
-        );
-    }
-    if h >= 2 {
-        if let Some(ref track) = app.track {
-            let icon = if track.paused { " ⏸" } else { " ▶" };
-            let progress = if track.duration > 0.0 {
-                format!(
-                    "{} {:02}:{:02}/{:02}:{:02}",
-                    icon,
-                    (track.position as u64) / 60,
-                    (track.position as u64) % 60,
-                    (track.duration as u64) / 60,
-                    (track.duration as u64) % 60,
-                )
-            } else {
-                format!("{}  Playing...", icon)
-            };
-            f.render_widget(
-                Paragraph::new(Span::styled(
-                    truncate(&progress, inner.width.saturating_sub(1) as usize),
-                    Style::default().fg(theme::SAPPHIRE),
-                )).style(Style::default().bg(theme::BASE)),
-                rows[1],
-            );
-        }
-    }
+    f.render_widget(
+        Paragraph::new(Span::styled(
+            " ▶ YT-CLI v0.3.1",
+            Style::default().fg(theme::TEAL).bold(),
+        )).style(Style::default().bg(theme::BASE)),
+        inner,
+    );
 }
 
 fn draw_top_right(f: &mut Frame, area: Rect, app: &App) {
@@ -107,49 +74,33 @@ fn draw_top_right(f: &mut Frame, area: Rect, app: &App) {
         .style(Style::default().bg(theme::MANTLE));
 
     let inner = block.inner(area);
-    let h = inner.height as usize;
     f.render_widget(block, area);
-
-    let rows = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints(vec![Constraint::Length(1); h])
-        .split(inner);
 
     let mode_tag = match app.input_mode {
         InputMode::Search => Span::styled(" SEARCH ", Style::default().fg(theme::CRUST).bg(theme::TEAL).bold()),
         InputMode::Normal => Span::styled(" NORMAL ", Style::default().fg(theme::CRUST).bg(theme::SAPPHIRE).bold()),
     };
 
-    // Baris 1: mode tag + prompt (gak ada cursor di sini)
-    let prompt = if app.input_mode == InputMode::Search {
-        " Search:"
+    // Semua dalam 1 baris: [NORMAL] / = Search  atau  [SEARCH] Search: query█
+    let line = if app.input_mode == InputMode::Search {
+        let cursor = "█";
+        Line::from(vec![
+            mode_tag,
+            Span::styled(" Search: ", Style::default().fg(theme::OVERLAY1)),
+            Span::styled(&app.query, Style::default().fg(theme::TEXT)),
+            Span::styled(cursor, Style::default().fg(theme::TEAL)),
+        ])
     } else {
-        " / = Search"
+        Line::from(vec![
+            mode_tag,
+            Span::styled(" / = Search", Style::default().fg(theme::OVERLAY1)),
+        ])
     };
 
-    if h >= 1 {
-        f.render_widget(
-            Paragraph::new(Line::from(vec![
-                mode_tag,
-                Span::styled(prompt, Style::default().fg(theme::OVERLAY1)),
-            ])).style(Style::default().bg(theme::MANTLE)),
-            rows[0],
-        );
-    }
-
-    // Baris 2: query input + cursor (hanya di sini)
-    if h >= 2 {
-        let q = if app.input_mode == InputMode::Search {
-            format!(" {}█", app.query)
-        } else {
-            String::new()
-        };
-        f.render_widget(
-            Paragraph::new(Span::styled(&q, Style::default().fg(theme::TEXT)))
-                .style(Style::default().bg(theme::MANTLE)),
-            rows[1],
-        );
-    }
+    f.render_widget(
+        Paragraph::new(line).style(Style::default().bg(theme::MANTLE)),
+        inner,
+    );
 }
 
 // ── Body: sidebar + content ──
@@ -164,7 +115,7 @@ fn draw_body(f: &mut Frame, area: Rect, app: &App) {
     draw_content(f, parts[1], app);
 }
 
-// ── Sidebar (keybinds only) ──
+// ── Sidebar: keybinds (atas) + now-playing (bawah) ──
 
 fn draw_sidebar(f: &mut Frame, area: Rect, app: &App) {
     let block = Block::default()
@@ -176,13 +127,24 @@ fn draw_sidebar(f: &mut Frame, area: Rect, app: &App) {
     let inner = block.inner(area);
     f.render_widget(block, area);
 
+    let has_track = app.track.is_some();
+
+    // Split: keybinds (atas) | now-playing (bawah, 1 line)
+    let parts = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints(vec![
+            Constraint::Min(3),
+            if has_track { Constraint::Length(1) } else { Constraint::Length(0) },
+        ])
+        .split(inner);
+
+    // ── Keybinds ──
     let has_next = app.playlist.current + 1 < app.playlist.len();
     let has_prev = app.playlist.current > 0;
 
     let next_style = if has_next { theme::key_style() } else { theme::dim_style() };
     let prev_style = if has_prev { theme::key_style() } else { theme::dim_style() };
 
-    // Repeat & Shuffle labels
     let repeat_label = app.repeat.label();
     let shuffle_label = if app.playlist.shuffled { "On" } else { "Off" };
 
@@ -216,7 +178,33 @@ fn draw_sidebar(f: &mut Frame, area: Rect, app: &App) {
         Line::from(Span::styled(" [C-c] Quit", theme::key_style())),
     ];
 
-    f.render_widget(Paragraph::new(keybind_lines), inner);
+    f.render_widget(Paragraph::new(keybind_lines), parts[0]);
+
+    // ── Now-playing progress (di bawah keybinds) ──
+    if has_track {
+        if let Some(ref track) = app.track {
+            let icon = if track.paused { " ⏸" } else { " ▶" };
+            let progress = if track.duration > 0.0 {
+                format!(
+                    "{} {:02}:{:02}/{:02}:{:02}",
+                    icon,
+                    (track.position as u64) / 60,
+                    (track.position as u64) % 60,
+                    (track.duration as u64) / 60,
+                    (track.duration as u64) % 60,
+                )
+            } else {
+                format!("{}  0:00/?:??", icon)
+            };
+            f.render_widget(
+                Paragraph::new(Span::styled(
+                    truncate(&progress, inner.width.saturating_sub(1) as usize),
+                    Style::default().fg(theme::SAPPHIRE),
+                )).style(Style::default().bg(theme::BASE)),
+                parts[1],
+            );
+        }
+    }
 }
 
 // ── Content area ──
