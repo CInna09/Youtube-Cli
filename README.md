@@ -56,7 +56,7 @@ cargo install --path .
 
 ### Via binary release
 
-Download binary dari [GitHub Releases](https://github.com/I-XXII-V/Youtube-Cli/releases) (tersedia untuk Linux, macOS, Windows):
+Download binary dari [GitHub Releases](https://github.com/I-XXII-V/Youtube-Cli/releases) (tersedia untuk Linux & macOS):
 
 ```bash
 # Contoh Linux
