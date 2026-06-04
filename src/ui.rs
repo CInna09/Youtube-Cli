@@ -41,7 +41,7 @@ pub fn draw(f: &mut Frame, app: &App) {
 fn draw_titlebar(f: &mut Frame, area: Rect, _app: &App) {
     let title = Paragraph::new(Line::from(vec![
         Span::styled(
-            "─── YouTube CLI Player v0.2.0 ───",
+            "─── YouTube CLI Player v0.2.1 ───",
             Style::default().fg(theme::OVERLAY1),
         ),
     ]))
@@ -140,7 +140,7 @@ fn draw_sidebar(f: &mut Frame, area: Rect, app: &App) {
         Line::from(Span::styled(" ╭──────────────╮", Style::default().fg(theme::SURFACE2))),
         Line::from(Span::styled(" │   (▶) YT     │", Style::default().fg(theme::TEAL).bold())),
         Line::from(Span::styled(" ╰──────────────╯", Style::default().fg(theme::SURFACE2))),
-        Line::from(Span::styled("   YT-CLI v0.1", Style::default().fg(theme::OVERLAY1))),
+        Line::from(Span::styled("   YT-CLI v0.2", Style::default().fg(theme::OVERLAY1))),
     ];
     f.render_widget(Paragraph::new(logo_lines), parts[0]);
 
@@ -204,26 +204,26 @@ fn draw_sidebar(f: &mut Frame, area: Rect, app: &App) {
 
     let keybind_lines = vec![
         Line::from(Span::styled(" Controls", Style::default().fg(theme::OVERLAY1))),
-        Line::from(Span::styled(" [Space] Play/Pause  [S] Stop", theme::key_style())),
+        Line::from(Span::styled(" [Spc]Play [S]Stop", theme::key_style())),
         Line::from(vec![
-            Span::styled(" [N/W] Next", next_style),
-            Span::styled("  ", Style::default().fg(theme::SURFACE2)),
-            Span::styled("[P/B] Prev", prev_style),
+            Span::styled(" [N]Next", next_style),
+            Span::styled(" ", Style::default().fg(theme::SURFACE2)),
+            Span::styled("[P]Prev", prev_style),
         ]),
-        Line::from(Span::styled(" [/] Search  [L] Load+", theme::key_style())),
-        Line::from(Span::styled(" [g] Top  [G] Bottom", theme::key_style())),
-        Line::from(Span::styled(" [^U] ↑½  [^D] ↓½", theme::key_style())),
-        Line::from(Span::styled(" [-=] Vol±5%  [][] Vol±1%", theme::key_style())),
-        Line::from(Span::styled(" [←→] Seek  [↑↓] Nav", theme::key_style())),
+        Line::from(Span::styled(" [/]Srch [L]Load+", theme::key_style())),
+        Line::from(Span::styled(" [g]Top [G]Bot", theme::key_style())),
+        Line::from(Span::styled(" [^U]↑½ [^D]↓½", theme::key_style())),
+        Line::from(Span::styled(" [←→]5s [↑↓]Nav", theme::key_style())),
+        Line::from(Span::styled(" [-=]±5 [][]±1", theme::key_style())),
         Line::from(vec![
-            Span::styled(" [R] Repeat: ", theme::key_style()),
+            Span::styled(" [R]Repeat:", Style::default().fg(theme::OVERLAY1)),
             Span::styled(repeat_label, Style::default().fg(theme::TEAL).bold()),
         ]),
         Line::from(vec![
-            Span::styled(" [X] Shuffle: ", theme::key_style()),
+            Span::styled(" [X]Shfl:", Style::default().fg(theme::OVERLAY1)),
             Span::styled(shuffle_label, Style::default().fg(theme::TEAL).bold()),
         ]),
-        Line::from(Span::styled(" [F1] Mute  [^C] Quit", theme::key_style())),
+        Line::from(Span::styled(" [F1]Mute [^C]Q", theme::key_style())),
     ];
     f.render_widget(Paragraph::new(keybind_lines), parts[next_part_idx]);
 
