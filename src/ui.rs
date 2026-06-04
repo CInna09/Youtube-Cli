@@ -41,7 +41,7 @@ pub fn draw(f: &mut Frame, app: &App) {
 fn draw_titlebar(f: &mut Frame, area: Rect, _app: &App) {
     let title = Paragraph::new(Line::from(vec![
         Span::styled(
-            "─── YouTube CLI Player v0.1.0 ───",
+            "─── YouTube CLI Player v0.2.0 ───",
             Style::default().fg(theme::OVERLAY1),
         ),
     ]))
