@@ -120,38 +120,35 @@ fn draw_top_right(f: &mut Frame, area: Rect, app: &App) {
         InputMode::Normal => Span::styled(" NORMAL ", Style::default().fg(theme::CRUST).bg(theme::SAPPHIRE).bold()),
     };
 
-    // Baris 1: mode tag + prompt (tanpa query biar g dobel)
+    // Baris 1: mode tag + prompt (gak ada cursor di sini)
     let prompt = if app.input_mode == InputMode::Search {
-        " Search: "
+        " Search:"
     } else {
         " / = Search"
     };
 
     if h >= 1 {
-        let cursor = if app.input_mode == InputMode::Search { "█" } else { "" };
         f.render_widget(
             Paragraph::new(Line::from(vec![
                 mode_tag,
                 Span::styled(prompt, Style::default().fg(theme::OVERLAY1)),
-                Span::styled(cursor, Style::default().fg(theme::TEAL)),
-            ])).alignment(Alignment::Left)
-              .style(Style::default().bg(theme::MANTLE)),
+            ])).style(Style::default().bg(theme::MANTLE)),
             rows[0],
         );
     }
 
-    // Baris 2: query input (hanya di search mode)
+    // Baris 2: query input + cursor (hanya di sini)
     if h >= 2 {
-        if app.input_mode == InputMode::Search {
-            f.render_widget(
-                Paragraph::new(Line::from(vec![
-                    Span::styled(" ", Style::default().fg(theme::TEXT)),
-                    Span::styled(&app.query, Style::default().fg(theme::TEXT)),
-                    Span::styled("█", Style::default().fg(theme::TEAL)),
-                ])).style(Style::default().bg(theme::MANTLE)),
-                rows[1],
-            );
-        }
+        let q = if app.input_mode == InputMode::Search {
+            format!(" {}█", app.query)
+        } else {
+            String::new()
+        };
+        f.render_widget(
+            Paragraph::new(Span::styled(&q, Style::default().fg(theme::TEXT)))
+                .style(Style::default().bg(theme::MANTLE)),
+            rows[1],
+        );
     }
 }
 
